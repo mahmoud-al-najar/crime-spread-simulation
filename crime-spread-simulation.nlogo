@@ -1,36 +1,60 @@
 extensions [ gis ]
 
+breed [criminals criminal]
+
+patches-own [
+  accessible?
+]
+
 globals [
   toulouse-dataset
 ]
 
+to init-roads
+  import-pcolors "map.png"
+  ask patches [
+    ifelse pcolor = 7
+    [
+      set accessible? true
+    ]
+    [
+      set accessible? false
+    ]
+  ]
+end
+
+to init-criminals
+  create-criminals 200 [
+    set shape "person"
+    set color 15
+    set size 13
+    move-to one-of patches with [accessible?]
+  ]
+end
+
 to setup
-  clear-all
-  setup-maps
-  reset-ticks
+  __clear-all-and-reset-ticks
+  init-roads
+  init-criminals
 end
 
-to setup-maps
-  ; Load all of our datasets
-  set toulouse-dataset gis:load-dataset "data/toulouse.shp"
-
-  gis:set-world-envelope (gis:envelope-of toulouse-dataset)
-  display-map ;; display the tract borders
-end
-
-to display-map
-  gis:set-drawing-color blue
-  gis:draw toulouse-dataset 1
+to go
+  ask criminals[
+    let possible-patches (patches in-radius 20 with [accessible?])
+      if (any? possible-patches) [
+        move-to one-of possible-patches
+      ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-647
-448
+1179
+660
 -1
 -1
-13.0
+1.0
 1
 10
 1
@@ -40,10 +64,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-480
+480
+-320
+320
 0
 0
 1
@@ -58,6 +82,23 @@ BUTTON
 NIL
 setup
 NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+43
+130
+106
+163
+NIL
+go
+T
 1
 T
 OBSERVER
