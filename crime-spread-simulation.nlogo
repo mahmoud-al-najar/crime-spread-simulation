@@ -7,6 +7,7 @@ extensions [ gis ]
 
 breed [criminals criminal]
 breed [policemen policeman]
+breed [crimes crime]
 
 patches-own [
   accessible?
@@ -16,6 +17,12 @@ patches-own [
 
 globals [
   toulouse-dataset
+]
+
+criminals-own [
+  on-the-run?
+  time-of-crime
+  cooldown-period
 ]
 
 to init-roads
@@ -45,18 +52,22 @@ end
 
 to init-criminals
   create-criminals count-criminals [
+    set on-the-run? false
+    set time-of-crime nobody
+    set cooldown-period 10
     set shape "person"
     set color 15
-    set size 10
+    set size 12
     move-to one-of patches with [accessible? and not police-walking-range?]
   ]
 end
 
 to init-policemen
   create-policemen count-policemen [
-    set shape "person"
-    set color 101
-    set size 10
+    set shape "person police"
+;    set color 101
+    set color 0
+    set size 12
     move-to one-of patches with [next-to-police-station?]
   ]
 end
@@ -81,7 +92,53 @@ to go
         move-to one-of possible-patches
       ]
   ]
+  commit-crimes
+  manage-cooldowns
   tick
+end
+
+to commit-crimes
+  let potential-criminals criminals with [not on-the-run?]
+  if (any? potential-criminals)[
+    ifelse (count potential-criminals > 4)[
+      ask n-of (0.02 * count potential-criminals) potential-criminals [
+        commit-crime
+      ]
+    ]
+    [
+      ask potential-criminals[
+        commit-crime
+      ]
+    ]
+  ]
+end
+
+to manage-cooldowns
+  ask criminals with [on-the-run?][
+    if (ticks = time-of-crime + cooldown-period)
+    [
+      set on-the-run? false
+      set time-of-crime nobody
+      set shape "person"
+      set color 15
+      set size 12
+    ]
+  ]
+end
+
+to commit-crime ;; turtle procedure
+  ask [patch-here] of self[
+    sprout-crimes 1 [
+      set shape "flag"
+      set color 13
+      set size 12
+    ]
+  ]
+  set time-of-crime ticks
+  set on-the-run? true
+  set shape "monster"
+  set color 123
+  set size 12
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -112,11 +169,11 @@ ticks
 30.0
 
 BUTTON
-131
-49
-197
-82
-NIL
+6
+95
+98
+128
+Setup
 setup
 NIL
 1
@@ -129,11 +186,11 @@ NIL
 1
 
 BUTTON
-43
-130
-106
-163
-NIL
+105
+95
+200
+128
+Go
 go
 T
 1
@@ -146,30 +203,30 @@ NIL
 1
 
 SLIDER
+6
 11
-229
-183
-262
+199
+44
 count-policemen
 count-policemen
 1
 100
-50.0
+23.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-11
-273
-183
-306
+6
+55
+200
+88
 count-criminals
 count-criminals
 1
 1000
-300.0
+103.0
 1
 1
 NIL
@@ -378,6 +435,18 @@ true
 0
 Line -7500403 true 150 0 150 150
 
+monster
+false
+0
+Polygon -7500403 true true 75 150 90 195 210 195 225 150 255 120 255 45 180 0 120 0 45 45 45 120
+Circle -16777216 true false 165 60 60
+Circle -16777216 true false 75 60 60
+Polygon -7500403 true true 225 150 285 195 285 285 255 300 255 210 180 165
+Polygon -7500403 true true 75 150 15 195 15 285 45 300 45 210 120 165
+Polygon -7500403 true true 210 210 225 285 195 285 165 165
+Polygon -7500403 true true 90 210 75 285 105 285 135 165
+Rectangle -7500403 true true 135 165 165 270
+
 pentagon
 false
 0
@@ -391,6 +460,29 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person police
+false
+0
+Polygon -1 true false 124 91 150 165 178 91
+Polygon -13345367 true false 134 91 149 106 134 181 149 196 164 181 149 106 164 91
+Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -13345367 true false 120 90 105 90 60 195 90 210 116 158 120 195 180 195 184 158 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
+Rectangle -7500403 true true 123 76 176 92
+Circle -7500403 true true 110 5 80
+Polygon -13345367 true false 150 26 110 41 97 29 137 -1 158 6 185 0 201 6 196 23 204 34 180 33
+Line -13345367 false 121 90 194 90
+Line -16777216 false 148 143 150 196
+Rectangle -16777216 true false 116 186 182 198
+Rectangle -16777216 true false 109 183 124 227
+Rectangle -16777216 true false 176 183 195 205
+Circle -1 true false 152 143 9
+Circle -1 true false 152 166 9
+Polygon -1184463 true false 172 112 191 112 185 133 179 133
+Polygon -1184463 true false 175 6 194 6 189 21 180 21
+Line -1184463 false 149 24 197 24
+Rectangle -16777216 true false 101 177 122 187
+Rectangle -16777216 true false 179 164 183 186
 
 plant
 false
@@ -419,6 +511,23 @@ Rectangle -1 true true 65 221 80 296
 Polygon -1 true true 195 285 210 285 210 240 240 210 195 210
 Polygon -7500403 true false 276 85 285 105 302 99 294 83
 Polygon -7500403 true false 219 85 210 105 193 99 201 83
+
+spider
+true
+0
+Polygon -7500403 true true 134 255 104 240 96 210 98 196 114 171 134 150 119 135 119 120 134 105 164 105 179 120 179 135 164 150 185 173 199 195 203 210 194 240 164 255
+Line -7500403 true 167 109 170 90
+Line -7500403 true 170 91 156 88
+Line -7500403 true 130 91 144 88
+Line -7500403 true 133 109 130 90
+Polygon -7500403 true true 167 117 207 102 216 71 227 27 227 72 212 117 167 132
+Polygon -7500403 true true 164 210 158 194 195 195 225 210 195 285 240 210 210 180 164 180
+Polygon -7500403 true true 136 210 142 194 105 195 75 210 105 285 60 210 90 180 136 180
+Polygon -7500403 true true 133 117 93 102 84 71 73 27 73 72 88 117 133 132
+Polygon -7500403 true true 163 140 214 129 234 114 255 74 242 126 216 143 164 152
+Polygon -7500403 true true 161 183 203 167 239 180 268 239 249 171 202 153 163 162
+Polygon -7500403 true true 137 140 86 129 66 114 45 74 58 126 84 143 136 152
+Polygon -7500403 true true 139 183 97 167 61 180 32 239 51 171 98 153 137 162
 
 square
 false
