@@ -80,21 +80,8 @@ to go
       if (any? possible-patches) [
         move-to one-of possible-patches
       ]
-
-    ;    let next-patch nobody
-;    ask patches in-radius 10 with [accessible?][
-;      if (any? patches in-radius 10 with [pcolor = 105])
-;        [
-;          set next-patch self
-;          stop
-;        ]
-;    ]
-;    if next-patch != nobody
-;    [
-;      move-to next-patch
-;    ]
-
   ]
+  tick
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
