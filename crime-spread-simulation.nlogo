@@ -48,7 +48,7 @@ to init-criminals
     set shape "person"
     set color 15
     set size 10
-    move-to one-of patches with [accessible?]
+    move-to one-of patches with [accessible? and not police-walking-range?]
   ]
 end
 
@@ -70,7 +70,7 @@ end
 
 to go
   ask criminals[
-    let possible-patches (patches in-radius 20 with [accessible?])
+    let possible-patches (patches in-radius 20 with [accessible? and not police-walking-range?])
       if (any? possible-patches) [
         move-to one-of possible-patches
       ]
