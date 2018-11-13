@@ -18,6 +18,12 @@ globals [
   toulouse-dataset
 ]
 
+criminals-own [
+  on-the-run?
+  time-of-crime
+  cooldown-period
+]
+
 to init-roads
   import-pcolors "map2.png"
   ask patches [
@@ -45,18 +51,21 @@ end
 
 to init-criminals
   create-criminals count-criminals [
+    set on-the-run? false
+    set time-of-crime nobody
+    set cooldown-period 5
     set shape "person"
-    set color 15
-    set size 10
+    set color 0
+    set size 12
     move-to one-of patches with [accessible? and not police-walking-range?]
   ]
 end
 
 to init-policemen
   create-policemen count-policemen [
-    set shape "person"
-    set color 101
-    set size 10
+    set shape "person police"
+;    set color 101
+    set size 12
     move-to one-of patches with [next-to-police-station?]
   ]
 end
@@ -81,7 +90,49 @@ to go
         move-to one-of possible-patches
       ]
   ]
+  commit-crimes
+  manage-cooldowns
   tick
+end
+
+to commit-crimes
+  let potential-criminals criminals with [not on-the-run?]
+  if (any? potential-criminals)[
+    ifelse (count potential-criminals > 4)[
+      ask n-of (0.1 * count potential-criminals) potential-criminals [
+        commit-crime
+      ]
+    ]
+    [
+      ask potential-criminals[
+        commit-crime
+      ]
+    ]
+  ]
+end
+
+to manage-cooldowns
+  ask criminals with [on-the-run?][
+    if (ticks = time-of-crime + cooldown-period)
+    [
+      set on-the-run? false
+      set time-of-crime nobody
+      set shape "person"
+      set color 0
+      set size 12
+    ]
+  ]
+end
+
+to commit-crime ;; turtle procedure
+  ask [patch-here] of self[
+          set pcolor 125
+        ]
+  set time-of-crime ticks
+  set on-the-run? true
+  set shape "monster"
+  set color 123
+  set size 12
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -154,7 +205,7 @@ count-policemen
 count-policemen
 1
 100
-50.0
+23.0
 1
 1
 NIL
@@ -169,7 +220,7 @@ count-criminals
 count-criminals
 1
 1000
-300.0
+103.0
 1
 1
 NIL
@@ -378,6 +429,18 @@ true
 0
 Line -7500403 true 150 0 150 150
 
+monster
+false
+0
+Polygon -7500403 true true 75 150 90 195 210 195 225 150 255 120 255 45 180 0 120 0 45 45 45 120
+Circle -16777216 true false 165 60 60
+Circle -16777216 true false 75 60 60
+Polygon -7500403 true true 225 150 285 195 285 285 255 300 255 210 180 165
+Polygon -7500403 true true 75 150 15 195 15 285 45 300 45 210 120 165
+Polygon -7500403 true true 210 210 225 285 195 285 165 165
+Polygon -7500403 true true 90 210 75 285 105 285 135 165
+Rectangle -7500403 true true 135 165 165 270
+
 pentagon
 false
 0
@@ -391,6 +454,29 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person police
+false
+0
+Polygon -1 true false 124 91 150 165 178 91
+Polygon -13345367 true false 134 91 149 106 134 181 149 196 164 181 149 106 164 91
+Polygon -13345367 true false 180 195 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285
+Polygon -13345367 true false 120 90 105 90 60 195 90 210 116 158 120 195 180 195 184 158 210 210 240 195 195 90 180 90 165 105 150 165 135 105 120 90
+Rectangle -7500403 true true 123 76 176 92
+Circle -7500403 true true 110 5 80
+Polygon -13345367 true false 150 26 110 41 97 29 137 -1 158 6 185 0 201 6 196 23 204 34 180 33
+Line -13345367 false 121 90 194 90
+Line -16777216 false 148 143 150 196
+Rectangle -16777216 true false 116 186 182 198
+Rectangle -16777216 true false 109 183 124 227
+Rectangle -16777216 true false 176 183 195 205
+Circle -1 true false 152 143 9
+Circle -1 true false 152 166 9
+Polygon -1184463 true false 172 112 191 112 185 133 179 133
+Polygon -1184463 true false 175 6 194 6 189 21 180 21
+Line -1184463 false 149 24 197 24
+Rectangle -16777216 true false 101 177 122 187
+Rectangle -16777216 true false 179 164 183 186
 
 plant
 false
