@@ -7,6 +7,7 @@ extensions [ gis ]
 
 breed [criminals criminal]
 breed [policemen policeman]
+breed [crimes crime]
 
 patches-own [
   accessible?
@@ -53,9 +54,9 @@ to init-criminals
   create-criminals count-criminals [
     set on-the-run? false
     set time-of-crime nobody
-    set cooldown-period 5
+    set cooldown-period 10
     set shape "person"
-    set color 0
+    set color 15
     set size 12
     move-to one-of patches with [accessible? and not police-walking-range?]
   ]
@@ -65,6 +66,7 @@ to init-policemen
   create-policemen count-policemen [
     set shape "person police"
 ;    set color 101
+    set color 0
     set size 12
     move-to one-of patches with [next-to-police-station?]
   ]
@@ -99,7 +101,7 @@ to commit-crimes
   let potential-criminals criminals with [not on-the-run?]
   if (any? potential-criminals)[
     ifelse (count potential-criminals > 4)[
-      ask n-of (0.1 * count potential-criminals) potential-criminals [
+      ask n-of (0.02 * count potential-criminals) potential-criminals [
         commit-crime
       ]
     ]
@@ -118,7 +120,7 @@ to manage-cooldowns
       set on-the-run? false
       set time-of-crime nobody
       set shape "person"
-      set color 0
+      set color 15
       set size 12
     ]
   ]
@@ -126,8 +128,12 @@ end
 
 to commit-crime ;; turtle procedure
   ask [patch-here] of self[
-          set pcolor 125
-        ]
+    sprout-crimes 1 [
+      set shape "flag"
+      set color 13
+      set size 12
+    ]
+  ]
   set time-of-crime ticks
   set on-the-run? true
   set shape "monster"
@@ -163,11 +169,11 @@ ticks
 30.0
 
 BUTTON
-131
-49
-197
-82
-NIL
+6
+95
+98
+128
+Setup
 setup
 NIL
 1
@@ -180,11 +186,11 @@ NIL
 1
 
 BUTTON
-43
-130
-106
-163
-NIL
+105
+95
+200
+128
+Go
 go
 T
 1
@@ -197,10 +203,10 @@ NIL
 1
 
 SLIDER
+6
 11
-229
-183
-262
+199
+44
 count-policemen
 count-policemen
 1
@@ -212,10 +218,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-273
-183
-306
+6
+55
+200
+88
 count-criminals
 count-criminals
 1
@@ -505,6 +511,23 @@ Rectangle -1 true true 65 221 80 296
 Polygon -1 true true 195 285 210 285 210 240 240 210 195 210
 Polygon -7500403 true false 276 85 285 105 302 99 294 83
 Polygon -7500403 true false 219 85 210 105 193 99 201 83
+
+spider
+true
+0
+Polygon -7500403 true true 134 255 104 240 96 210 98 196 114 171 134 150 119 135 119 120 134 105 164 105 179 120 179 135 164 150 185 173 199 195 203 210 194 240 164 255
+Line -7500403 true 167 109 170 90
+Line -7500403 true 170 91 156 88
+Line -7500403 true 130 91 144 88
+Line -7500403 true 133 109 130 90
+Polygon -7500403 true true 167 117 207 102 216 71 227 27 227 72 212 117 167 132
+Polygon -7500403 true true 164 210 158 194 195 195 225 210 195 285 240 210 210 180 164 180
+Polygon -7500403 true true 136 210 142 194 105 195 75 210 105 285 60 210 90 180 136 180
+Polygon -7500403 true true 133 117 93 102 84 71 73 27 73 72 88 117 133 132
+Polygon -7500403 true true 163 140 214 129 234 114 255 74 242 126 216 143 164 152
+Polygon -7500403 true true 161 183 203 167 239 180 268 239 249 171 202 153 163 162
+Polygon -7500403 true true 137 140 86 129 66 114 45 74 58 126 84 143 136 152
+Polygon -7500403 true true 139 183 97 167 61 180 32 239 51 171 98 153 137 162
 
 square
 false
