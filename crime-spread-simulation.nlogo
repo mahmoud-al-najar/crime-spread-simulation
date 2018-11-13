@@ -1,9 +1,17 @@
+; criminals: 15
+; police stations: 105
+; police: 95
+; roads: 7
+
 extensions [ gis ]
 
 breed [criminals criminal]
+breed [policemen policeman]
 
 patches-own [
   accessible?
+  next-to-police-station?
+  police-walking-range?
 ]
 
 globals [
@@ -11,24 +19,45 @@ globals [
 ]
 
 to init-roads
-  import-pcolors "map.png"
+  import-pcolors "map2.png"
   ask patches [
-    ifelse pcolor = 7
+
+    set accessible? false
+    set next-to-police-station? false
+    set police-walking-range? false
+
+    if pcolor = 7
     [
       set accessible? true
     ]
+
+    if pcolor = 27
     [
-      set accessible? false
+      set accessible? true
+      set police-walking-range? true
+      if any? patches in-radius 5 with [pcolor = 105]
+      [
+        set next-to-police-station? true
+      ]
     ]
   ]
 end
 
 to init-criminals
-  create-criminals 200 [
+  create-criminals count-criminals [
     set shape "person"
     set color 15
-    set size 13
+    set size 10
     move-to one-of patches with [accessible?]
+  ]
+end
+
+to init-policemen
+  create-policemen count-policemen [
+    set shape "person"
+    set color 101
+    set size 10
+    move-to one-of patches with [next-to-police-station?]
   ]
 end
 
@@ -36,6 +65,7 @@ to setup
   __clear-all-and-reset-ticks
   init-roads
   init-criminals
+  init-policemen
 end
 
 to go
@@ -45,13 +75,33 @@ to go
         move-to one-of possible-patches
       ]
   ]
+  ask policemen[
+    let possible-patches (patches in-radius 20 with [police-walking-range?])
+      if (any? possible-patches) [
+        move-to one-of possible-patches
+      ]
+
+    ;    let next-patch nobody
+;    ask patches in-radius 10 with [accessible?][
+;      if (any? patches in-radius 10 with [pcolor = 105])
+;        [
+;          set next-patch self
+;          stop
+;        ]
+;    ]
+;    if next-patch != nobody
+;    [
+;      move-to next-patch
+;    ]
+
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-1179
-660
+1579
+840
 -1
 -1
 1.0
@@ -64,10 +114,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--480
-480
--320
-320
+-680
+680
+-410
+410
 0
 0
 1
@@ -107,6 +157,36 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+11
+229
+183
+262
+count-policemen
+count-policemen
+1
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+11
+273
+183
+306
+count-criminals
+count-criminals
+1
+1000
+300.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
