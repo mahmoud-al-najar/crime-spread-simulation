@@ -1,1 +1,1 @@
-# crime-spread-simulation
+# Crime spread Simulation using NetLoga project to simulate crime spread in the city of Toulouse that takes into consideration several factors.### Actors:- Citizens- Criminals- Policemen### Factors: - Exposure to crime - Population density - Drugs Spread - Location of Police Stations
