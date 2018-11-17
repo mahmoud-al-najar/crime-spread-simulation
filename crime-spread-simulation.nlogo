@@ -8,11 +8,13 @@ extensions [ gis ]
 breed [criminals criminal]
 breed [policemen policeman]
 breed [crimes crime]
+breed [citizens citizen]
 
 patches-own [
   accessible?
   next-to-police-station?
   police-walking-range?
+  drug-area?
 ]
 
 globals [
@@ -23,19 +25,26 @@ criminals-own [
   on-the-run?
   time-of-crime
   cooldown-period
+  crime-probability
 ]
 
 to init-roads
-  import-pcolors "map2.png"
+  import-pcolors "map3.png"
   ask patches [
 
     set accessible? false
     set next-to-police-station? false
     set police-walking-range? false
+    set drug-area? false
 
     if pcolor = 7
     [
       set accessible? true
+    ]
+    if pcolor = 5
+    [
+      set accessible? true
+      set drug-area? true
     ]
 
     if pcolor = 27
@@ -51,30 +60,41 @@ to init-roads
 end
 
 to init-criminals
-  create-criminals count-criminals [
+  create-criminals ratio-criminals * population-size [
     set on-the-run? false
     set time-of-crime nobody
     set cooldown-period 10
+    set crime-probability 0
     set shape "person"
     set color 15
-    set size 12
+    set size 14
     move-to one-of patches with [accessible? and not police-walking-range?]
   ]
 end
 
 to init-policemen
-  create-policemen count-policemen [
+  create-policemen ratio-policemen * population-size  [
     set shape "person police"
 ;    set color 101
     set color 0
-    set size 12
-    move-to one-of patches with [next-to-police-station?]
+    set size 14
+    move-to one-of patches with [accessible? and next-to-police-station?]
+  ]
+end
+
+to init-citizens
+  create-citizens population-size [
+    set shape "person"
+    set color 55
+    set size 13
+    move-to one-of patches with [accessible?]
   ]
 end
 
 to setup
   __clear-all-and-reset-ticks
   init-roads
+  init-citizens
   init-criminals
   init-policemen
 end
@@ -99,17 +119,27 @@ end
 
 to commit-crimes
   let potential-criminals criminals with [not on-the-run?]
+  let new-probability count criminals with [on-the-run?] / count criminals
   if (any? potential-criminals)[
-    ifelse (count potential-criminals > 4)[
-      ask n-of (0.02 * count potential-criminals) potential-criminals [
-        commit-crime
+
+    ask potential-criminals [
+      if any? patches in-radius 5 with [drug-area?][
+        set new-probability new-probability + 0.1
+      ]
+
+      let count-police-in-area count policemen in-radius 20
+      let count-citizens-in-area count citizens in-radius 20
+      if (count-citizens-in-area > 0)[
+        set new-probability new-probability + (1 - (count-police-in-area / count-citizens-in-area))
+
+        set crime-probability crime-probability + new-probability
+
+        if (crime-probability > 0.8)[
+          commit-crime
+        ]
       ]
     ]
-    [
-      ask potential-criminals[
-        commit-crime
-      ]
-    ]
+
   ]
 end
 
@@ -121,7 +151,9 @@ to manage-cooldowns
       set time-of-crime nobody
       set shape "person"
       set color 15
-      set size 12
+      set size 14
+      ;; TODO change
+      set crime-probability 0
     ]
   ]
 end
@@ -137,8 +169,8 @@ to commit-crime ;; turtle procedure
   set time-of-crime ticks
   set on-the-run? true
   set shape "monster"
-  set color 123
-  set size 12
+;  set color 123
+;  set size 12
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -169,10 +201,10 @@ ticks
 30.0
 
 BUTTON
-6
-95
-98
-128
+5
+136
+97
+169
 Setup
 setup
 NIL
@@ -186,10 +218,10 @@ NIL
 1
 
 BUTTON
-105
-95
-200
-128
+104
+136
+199
+169
 Go
 go
 T
@@ -207,12 +239,12 @@ SLIDER
 11
 199
 44
-count-policemen
-count-policemen
+ratio-policemen
+ratio-policemen
+0.01
 1
-100
-23.0
-1
+0.2
+0.01
 1
 NIL
 HORIZONTAL
@@ -222,12 +254,27 @@ SLIDER
 55
 200
 88
-count-criminals
-count-criminals
+ratio-criminals
+ratio-criminals
+0.01
 1
-1000
-103.0
+0.14
+0.01
 1
+NIL
+HORIZONTAL
+
+SLIDER
+7
+96
+200
+129
+population-size
+population-size
+500
+2000
+1250.0
+50
 1
 NIL
 HORIZONTAL
