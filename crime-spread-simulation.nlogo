@@ -3,7 +3,7 @@
 ; police: 95
 ; roads: 7
 
-extensions [ gis ]
+extensions [ gis rnd ]
 
 breed [criminals criminal]
 breed [policemen policeman]
@@ -15,6 +15,7 @@ patches-own [
   next-to-police-station?
   police-walking-range?
   drug-area?
+  density
 ]
 
 globals [
@@ -27,6 +28,35 @@ criminals-own [
   cooldown-period
   crime-probability
 ]
+
+to init-density
+  import-pcolors "density2.png"
+  ask patches [
+    set density 10 - pcolor
+    if (density < 0) [ set density 0.1 ]
+    if (pcolor = 0) [ set density 0.1 ]
+  ]
+  ask rnd:weighted-n-of population-size patches [ density ] [
+    sprout-citizens 1
+    [
+      set shape "person"
+      set color 55
+      set size 13
+    ]
+  ]
+  ask rnd:weighted-n-of (ratio-criminals * population-size) patches [ density ] [
+    sprout-criminals 1
+    [
+      set on-the-run? false
+      set time-of-crime nobody
+      set cooldown-period 10
+      set crime-probability 0
+      set shape "person"
+      set color 15
+      set size 14
+    ]
+  ]
+end
 
 to init-roads
   import-pcolors "map3.png"
@@ -91,11 +121,30 @@ to init-citizens
   ]
 end
 
+
+
 to setup
   __clear-all-and-reset-ticks
+  init-density
   init-roads
-  init-citizens
-  init-criminals
+  ask citizens [
+    ifelse (any? (patches in-radius 50 with [accessible?]))[
+      move-to min-one-of (patches in-radius 50 with [accessible?]) [distance myself]
+    ]
+    [
+      die
+    ]
+  ]
+  ask criminals [
+      ifelse (any? (patches in-radius 50 with [accessible? and not police-walking-range?]))[
+        move-to min-one-of (patches in-radius 50 with [accessible? and not police-walking-range?]) [distance myself]
+      ]
+      [
+        die
+      ]
+  ]
+;  init-citizens
+;  init-criminals
   init-policemen
 end
 
@@ -130,11 +179,11 @@ to commit-crimes
       let count-police-in-area count policemen in-radius 20
       let count-citizens-in-area count citizens in-radius 20
       if (count-citizens-in-area > 0)[
-        set new-probability new-probability + (1 - (count-police-in-area / count-citizens-in-area))
+        set new-probability new-probability + (1 - (count-police-in-area / (count-citizens-in-area + count-police-in-area)))
 
         set crime-probability crime-probability + new-probability
 
-        if (crime-probability > 0.8)[
+        if (crime-probability >= 1)[
           commit-crime
         ]
       ]
@@ -168,7 +217,7 @@ to commit-crime ;; turtle procedure
   ]
   set time-of-crime ticks
   set on-the-run? true
-  set shape "monster"
+;  set shape "monster"
 ;  set color 123
 ;  set size 12
 end
@@ -176,7 +225,7 @@ end
 GRAPHICS-WINDOW
 210
 10
-1579
+1431
 840
 -1
 -1
@@ -190,8 +239,8 @@ GRAPHICS-WINDOW
 1
 1
 1
--680
-680
+-606
+606
 -410
 410
 0
@@ -243,7 +292,7 @@ ratio-policemen
 ratio-policemen
 0.01
 1
-0.2
+0.1
 0.01
 1
 NIL
@@ -258,7 +307,7 @@ ratio-criminals
 ratio-criminals
 0.01
 1
-0.14
+0.1
 0.01
 1
 NIL
@@ -273,7 +322,7 @@ population-size
 population-size
 500
 2000
-1250.0
+700.0
 50
 1
 NIL
