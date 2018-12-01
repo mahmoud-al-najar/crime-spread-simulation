@@ -3,12 +3,19 @@
 ; police: 95
 ; roads: 7
 
-extensions [ gis rnd ]
+extensions [ rnd ]
 
 breed [criminals criminal]
 breed [policemen policeman]
 breed [crimes crime]
 breed [citizens citizen]
+breed [caught-criminals caught-criminal]
+
+globals [
+  count-policement
+  count-free-criminals
+  count-criminals-caught
+]
 
 patches-own [
   accessible?
@@ -18,15 +25,24 @@ patches-own [
   density
 ]
 
-globals [
-  toulouse-dataset
-]
+;; A* util breed
+breed [patch-owners patch-owner]
 
 criminals-own [
   on-the-run?
   time-of-crime
   cooldown-period
   crime-probability
+]
+
+policemen-own[
+  at-station?
+  free?
+  target
+
+  ;; A* variables
+  explored-patches ;; to find the way to the crime
+  path-back ;; to find the way back to the station (without needing to run A* twice)
 ]
 
 to init-density
@@ -89,19 +105,6 @@ to init-roads
   ]
 end
 
-to init-criminals
-  create-criminals ratio-criminals * population-size [
-    set on-the-run? false
-    set time-of-crime nobody
-    set cooldown-period 10
-    set crime-probability 0
-    set shape "person"
-    set color 15
-    set size 14
-    move-to one-of patches with [accessible? and not police-walking-range?]
-  ]
-end
-
 to init-policemen
   create-policemen ratio-policemen * population-size  [
     set shape "person police"
@@ -109,19 +112,13 @@ to init-policemen
     set color 0
     set size 14
     move-to one-of patches with [accessible? and next-to-police-station?]
+    set target nobody
+    set at-station? true
+    set explored-patches []
+    set path-back []
+    set free? true
   ]
 end
-
-to init-citizens
-  create-citizens population-size [
-    set shape "person"
-    set color 55
-    set size 13
-    move-to one-of patches with [accessible?]
-  ]
-end
-
-
 
 to setup
   __clear-all-and-reset-ticks
@@ -143,9 +140,10 @@ to setup
         die
       ]
   ]
-;  init-citizens
-;  init-criminals
   init-policemen
+  set count-free-criminals ratio-criminals * population-size
+  set count-policement ratio-policemen * population-size
+  set count-criminals-caught 0
 end
 
 to go
@@ -156,10 +154,126 @@ to go
       ]
   ]
   ask policemen[
-    let possible-patches (patches in-radius 20 with [police-walking-range?])
-      if (any? possible-patches) [
-        move-to one-of possible-patches
+    ; If there is a target: move towards it
+    ifelse (target != nobody)
+    [
+      ; Empty list of explored patches: pick the best possible move
+      ifelse (empty? explored-patches)[
+        ; update explored-patches and the path back
+        let current-patch [patch-here] of self
+        set explored-patches lput current-patch explored-patches
+        set path-back lput current-patch path-back
+
+        ; pick the next move
+;        let next-patch min-one-of patches in-radius 20 with [accessible?] [distancexy ([xcor] of target) ([ycor] of target)]
+        let next-patch nobody
+        let dist 99999
+        let target-criminal target
+        ask patches in-radius 20 with [accessible?][
+          sprout-patch-owners 1 [
+            if (distance target-criminal < dist) [
+              set dist distance target-criminal
+              set next-patch [patch-here] of self
+            ]
+            die
+          ]
+        ]
+        move-to next-patch
       ]
+      ; Not empty: pick the best move that was not already explored ---- if there are no possible moves: backtrack through explored-patches
+      [
+
+        let valid? false
+        let min-distance 0
+        let next-patch nobody
+        while [not valid?]
+        [
+          set min-distance 0
+;          let temp-patch min-one-of patches in-radius 20 with [accessible? and distance target > min-distance] [distance target]
+          let dist 99999
+          let temp-patch nobody
+          let target-criminal target
+          ask patches in-radius 20 with [accessible?][
+
+
+            sprout-patch-owners 1 [
+              if (distance target-criminal < dist and distance target-criminal > min-distance) [
+                set dist distance target-criminal
+                set temp-patch [patch-here] of self
+              ]
+              die
+            ]
+
+          ]
+
+          set min-distance [distance target] of patch-owners-on temp-patch
+          if (not member? next-patch explored-patches)
+          [
+            set next-patch temp-patch
+            set valid? true
+          ]
+          ;; At this point, if next-patch is set, we move
+          ifelse (next-patch != nobody)
+          [
+            let current-patch [patch-here] of self
+            set explored-patches lput current-patch explored-patches
+            set path-back lput current-patch path-back
+            move-to next-patch
+            if (distance target-criminal < 3)
+            [
+              let patch-of-criminal [patch-here] of target-criminal
+              ask patch-of-criminal [
+                sprout-caught-criminals 1[
+                  set shape "person"
+                  set color yellow
+                  set size 20
+                ]
+              ]
+              ask target-criminal [
+                  die
+                ]
+              set target nobody
+            ]
+          ]
+          ;If it's still (nobody), that means that no possible patch was found ==> backtrack
+          [
+;            let current-patch [patch-here] of self
+;            set next-patch
+          ]
+        ]
+      ]
+    ]
+    ; No target: go back to the station
+    [
+      ifelse (at-station?)
+      [
+        let possible-patches (patches in-radius 20 with [police-walking-range?])
+        if (any? possible-patches) [
+          move-to one-of possible-patches
+        ]
+      ]
+      [
+        ifelse (length path-back > 0)[
+          let last-patch last path-back
+          set path-back remove-item ((length path-back) - 1) path-back
+          move-to last-patch
+          if ([pcolor] of last-patch = 95)
+          [
+            set at-station? true
+            set free? true
+            set color 0
+          ]
+        ]
+        [
+          if ([pcolor] of [patch-here] of self = 95)
+          [
+            set at-station? true
+            set free? true
+            set color 0
+          ]
+        ]
+      ]
+    ]
   ]
   commit-crimes
   manage-cooldowns
@@ -208,6 +322,7 @@ to manage-cooldowns
 end
 
 to commit-crime ;; turtle procedure
+  let criminal-to-be-followed self
   ask [patch-here] of self[
     sprout-crimes 1 [
       set shape "flag"
@@ -217,9 +332,20 @@ to commit-crime ;; turtle procedure
   ]
   set time-of-crime ticks
   set on-the-run? true
-;  set shape "monster"
-;  set color 123
-;  set size 12
+  if (any? policemen with [free?])
+  [
+    ask min-one-of policemen with [free?] [distance myself] [
+      set target criminal-to-be-followed
+      set free? false
+      ;;; TESTING
+      set color orange
+      set size 20
+      set at-station? false
+    ]
+  ]
+  ;;; TESTING
+  set color orange
+  set size 20
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -292,7 +418,7 @@ ratio-policemen
 ratio-policemen
 0.01
 1
-0.1
+0.05
 0.01
 1
 NIL
@@ -322,7 +448,7 @@ population-size
 population-size
 500
 2000
-700.0
+500.0
 50
 1
 NIL
