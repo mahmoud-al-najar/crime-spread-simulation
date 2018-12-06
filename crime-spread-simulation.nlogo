@@ -3,6 +3,8 @@
 ; police: 95
 ; roads: 7
 
+;; Add police follow criminals not monsters
+
 extensions [ rnd ]
 
 breed [criminals criminal]
@@ -46,7 +48,7 @@ policemen-own[
 ]
 
 to init-density
-  import-pcolors "density2.png"
+  import-pcolors "new_scaled.png"
   ask patches [
     set density 10 - pcolor
     if (density < 0) [ set density 0.1 ]
@@ -75,7 +77,7 @@ to init-density
 end
 
 to init-roads
-  import-pcolors "map3.png"
+  import-pcolors "corrected.png"
   ask patches [
 
     set accessible? false
@@ -221,6 +223,7 @@ to go
             move-to next-patch
             if (distance target-criminal < 3)
             [
+            if ([shape] of target-criminal = "monster")[
               let patch-of-criminal [patch-here] of target-criminal
               ask patch-of-criminal [
                 sprout-caught-criminals 1[
@@ -229,16 +232,22 @@ to go
                   set size 20
                 ]
               ]
+
               ask target-criminal [
-                  die
+                if (shape = "monster")[
+                    die
+                  ]
+                ]
                 ]
               set target nobody
             ]
           ]
           ;If it's still (nobody), that means that no possible patch was found ==> backtrack
           [
-;            let current-patch [patch-here] of self
-;            set next-patch
+            let current-patch [patch-here] of self
+            set next-patch last path-back
+            set explored-patches lput current-patch explored-patches
+;            set path-back lput current-patch path-back
           ]
         ]
       ]
@@ -257,12 +266,6 @@ to go
           let last-patch last path-back
           set path-back remove-item ((length path-back) - 1) path-back
           move-to last-patch
-          if ([pcolor] of last-patch = 95)
-          [
-            set at-station? true
-            set free? true
-            set color 0
-          ]
         ]
         [
           if ([pcolor] of [patch-here] of self = 95)
@@ -271,38 +274,52 @@ to go
             set free? true
             set color 0
           ]
+          if ([police-walking-range?] of [patch-here] of self = true)
+          [
+            set at-station? true
+            set free? true
+            set color 0
+            set path-back []
+            set explored-patches []
+          ]
         ]
       ]
     ]
   ]
   commit-crimes
   manage-cooldowns
+  if (count criminals = 0)
+  [
+    stop
+  ]
   tick
 end
 
 to commit-crimes
-  let potential-criminals criminals with [not on-the-run?]
-  let new-probability count criminals with [on-the-run?] / count criminals
-  if (any? potential-criminals)[
+  if (count criminals > 0)[
+    let potential-criminals criminals with [not on-the-run?]
+;    let new-probability count criminals with [on-the-run?] / count criminals
+;    let new-probability 0
+    if (any? potential-criminals)[
 
-    ask potential-criminals [
-      if any? patches in-radius 5 with [drug-area?][
-        set new-probability new-probability + 0.1
-      ]
+      ask potential-criminals [
+      let new-probability count criminals with [on-the-run?] in-radius 50 / count criminals
+;    let new-probability 0
+        if any? patches in-radius 5 with [drug-area?][
+          set new-probability new-probability + 0.8
+        ]
 
-      let count-police-in-area count policemen in-radius 20
-      let count-citizens-in-area count citizens in-radius 20
-      if (count-citizens-in-area > 0)[
-        set new-probability new-probability + (1 - (count-police-in-area / (count-citizens-in-area + count-police-in-area)))
-
-        set crime-probability crime-probability + new-probability
-
-        if (crime-probability >= 1)[
-          commit-crime
+        let count-police-in-area count policemen in-radius 50
+        let count-citizens-in-area count citizens in-radius 50
+        if (count-citizens-in-area > 0)[
+;          set new-probability new-probability + (1 - (count-police-in-area / (count-citizens-in-area + count-police-in-area)))
+          set new-probability new-probability + ((count-citizens-in-area * 50) / count citizens)
+          if (new-probability >= 1)[
+            commit-crime
+          ]
         ]
       ]
     ]
-
   ]
 end
 
@@ -344,6 +361,7 @@ to commit-crime ;; turtle procedure
     ]
   ]
   ;;; TESTING
+  set shape "monster"
   set color orange
   set size 20
 end
@@ -362,8 +380,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -606
 606
@@ -448,7 +466,7 @@ population-size
 population-size
 500
 2000
-500.0
+800.0
 50
 1
 NIL
