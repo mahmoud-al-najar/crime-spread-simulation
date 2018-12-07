@@ -17,6 +17,7 @@ globals [
   count-policement
   count-free-criminals
   count-criminals-caught
+  count-crimes-during-tick
 ]
 
 patches-own [
@@ -67,7 +68,7 @@ to init-density
     [
       set on-the-run? false
       set time-of-crime nobody
-      set cooldown-period 10
+      set cooldown-period 15
       set crime-probability 0
       set shape "person"
       set color 15
@@ -126,6 +127,7 @@ to setup
   __clear-all-and-reset-ticks
   init-density
   init-roads
+  set count-crimes-during-tick 0
   ask citizens [
     ifelse (any? (patches in-radius 50 with [accessible?]))[
       move-to min-one-of (patches in-radius 50 with [accessible?]) [distance myself]
@@ -149,6 +151,7 @@ to setup
 end
 
 to go
+  set count-crimes-during-tick 0
   ask criminals[
     let possible-patches (patches in-radius 20 with [accessible? and not police-walking-range?])
       if (any? possible-patches) [
@@ -288,6 +291,7 @@ to go
   ]
   commit-crimes
   manage-cooldowns
+
   if (count criminals = 0)
   [
     stop
@@ -306,16 +310,17 @@ to commit-crimes
       let new-probability count criminals with [on-the-run?] in-radius 50 / count criminals
 ;    let new-probability 0
         if any? patches in-radius 5 with [drug-area?][
-          set new-probability new-probability + 0.8
+          set new-probability new-probability + 0.2
         ]
 
-        let count-police-in-area count policemen in-radius 50
+;        let count-police-in-area count policemen in-radius 50
         let count-citizens-in-area count citizens in-radius 50
         if (count-citizens-in-area > 0)[
 ;          set new-probability new-probability + (1 - (count-police-in-area / (count-citizens-in-area + count-police-in-area)))
-          set new-probability new-probability + ((count-citizens-in-area * 50) / count citizens)
+          set new-probability new-probability + ((count-citizens-in-area * 80) / count citizens)
           if (new-probability >= 1)[
             commit-crime
+            set count-crimes-during-tick count-crimes-during-tick + 1
           ]
         ]
       ]
@@ -367,9 +372,9 @@ to commit-crime ;; turtle procedure
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+435
 10
-1431
+1656
 840
 -1
 -1
@@ -394,10 +399,10 @@ ticks
 30.0
 
 BUTTON
-5
-136
-97
-169
+7
+189
+228
+222
 Setup
 setup
 NIL
@@ -411,10 +416,10 @@ NIL
 1
 
 BUTTON
-104
-136
-199
-169
+231
+189
+429
+222
 Go
 go
 T
@@ -428,25 +433,25 @@ NIL
 1
 
 SLIDER
-6
-11
-199
-44
+9
+64
+428
+97
 ratio-policemen
 ratio-policemen
 0.01
 1
-0.05
+0.06
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-6
-55
-200
-88
+9
+108
+428
+141
 ratio-criminals
 ratio-criminals
 0.01
@@ -458,10 +463,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-7
-96
-200
-129
+10
+149
+430
+182
 population-size
 population-size
 500
@@ -471,6 +476,72 @@ population-size
 1
 NIL
 HORIZONTAL
+
+PLOT
+6
+269
+429
+407
+Crimes per Tick
+Ticks
+N Crimes
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plotxy ticks (count-crimes-during-tick)"
+
+PLOT
+6
+410
+429
+574
+Busy Police per Tick
+Ticks
+N Police
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plotxy ticks (count policemen with [not free?])"
+
+PLOT
+5
+576
+430
+838
+Criminals Stats per Tick
+Ticks
+N Criminals
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Potential" 1.0 0 -16777216 true "" "plot count criminals with [not on-the-run?]"
+"Busted" 1.0 0 -7500403 true "" "plot count caught-criminals"
+"On the run" 1.0 0 -2674135 true "" "plot count criminals with [on-the-run?]"
+
+TEXTBOX
+113
+23
+354
+45
+Crime Spread Simulation
+18
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
