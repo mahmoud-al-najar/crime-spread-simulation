@@ -49,7 +49,7 @@ policemen-own[
 ]
 
 to init-density
-  import-pcolors "new_scaled.png"
+  import-pcolors "density2.png"
   ask patches [
     set density 10 - pcolor
     if (density < 0) [ set density 0.1 ]
@@ -78,7 +78,7 @@ to init-density
 end
 
 to init-roads
-  import-pcolors "corrected.png"
+  import-pcolors "new_scaled.png"
   ask patches [
 
     set accessible? false
@@ -302,21 +302,21 @@ end
 to commit-crimes
   if (count criminals > 0)[
     let potential-criminals criminals with [not on-the-run?]
-;    let new-probability count criminals with [on-the-run?] / count criminals
-;    let new-probability 0
     if (any? potential-criminals)[
 
       ask potential-criminals [
       let new-probability count criminals with [on-the-run?] in-radius 50 / count criminals
-;    let new-probability 0
         if any? patches in-radius 5 with [drug-area?][
           set new-probability new-probability + 0.2
         ]
 
-;        let count-police-in-area count policemen in-radius 50
+        ;; police station in area?
+        if (any? patches in-radius 50 with [pcolor = 27])[
+          set new-probability new-probability - 0.2
+        ]
+
         let count-citizens-in-area count citizens in-radius 50
         if (count-citizens-in-area > 0)[
-;          set new-probability new-probability + (1 - (count-police-in-area / (count-citizens-in-area + count-police-in-area)))
           set new-probability new-probability + ((count-citizens-in-area * 80) / count citizens)
           if (new-probability >= 1)[
             commit-crime
