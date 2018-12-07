@@ -292,7 +292,8 @@ to go
   commit-crimes
   manage-cooldowns
 
-  if (count criminals = 0)
+;  if (count criminals = 0)
+  if (count criminals <= 0.2 * (ratio-criminals * population-size))
   [
     stop
   ]
@@ -307,7 +308,7 @@ to commit-crimes
       ask potential-criminals [
       let new-probability count criminals with [on-the-run?] in-radius 50 / count criminals
         if any? patches in-radius 5 with [drug-area?][
-          set new-probability new-probability + 0.2
+          set new-probability new-probability + 0.3
         ]
 
         ;; police station in area?
