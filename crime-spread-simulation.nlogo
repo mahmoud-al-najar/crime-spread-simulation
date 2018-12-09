@@ -3,21 +3,22 @@
 ; police: 95
 ; roads: 7
 
-;; Add police follow criminals not monsters
-
 extensions [ rnd ]
 
 breed [criminals criminal]
 breed [policemen policeman]
-breed [crimes crime]
 breed [citizens citizen]
+breed [crimes crime]
 breed [caught-criminals caught-criminal]
+;; A* util breed
+breed [patch-owners patch-owner]
 
 globals [
   count-policement
   count-free-criminals
   count-criminals-caught
   count-crimes-during-tick
+  count-successful-runaways
 ]
 
 patches-own [
@@ -27,9 +28,6 @@ patches-own [
   drug-area?
   density
 ]
-
-;; A* util breed
-breed [patch-owners patch-owner]
 
 criminals-own [
   on-the-run?
@@ -128,6 +126,7 @@ to setup
   init-density
   init-roads
   set count-crimes-during-tick 0
+  set count-successful-runaways 0
   ask citizens [
     ifelse (any? (patches in-radius 50 with [accessible?]))[
       move-to min-one-of (patches in-radius 50 with [accessible?]) [distance myself]
@@ -194,7 +193,6 @@ to go
         while [not valid?]
         [
           set min-distance 0
-;          let temp-patch min-one-of patches in-radius 20 with [accessible? and distance target > min-distance] [distance target]
           let dist 99999
           let temp-patch nobody
           let target-criminal target
@@ -250,7 +248,6 @@ to go
             let current-patch [patch-here] of self
             set next-patch last path-back
             set explored-patches lput current-patch explored-patches
-;            set path-back lput current-patch path-back
           ]
         ]
       ]
@@ -292,7 +289,6 @@ to go
   commit-crimes
   manage-cooldowns
 
-;  if (count criminals = 0)
   if (count criminals <= 0.2 * (ratio-criminals * population-size))
   [
     stop
@@ -340,6 +336,7 @@ to manage-cooldowns
       set size 14
       ;; TODO change
       set crime-probability 0
+      set count-successful-runaways count-successful-runaways + 1
     ]
   ]
 end
@@ -360,13 +357,11 @@ to commit-crime ;; turtle procedure
     ask min-one-of policemen with [free?] [distance myself] [
       set target criminal-to-be-followed
       set free? false
-      ;;; TESTING
       set color orange
       set size 20
       set at-station? false
     ]
   ]
-  ;;; TESTING
   set shape "monster"
   set color orange
   set size 20
@@ -401,9 +396,9 @@ ticks
 
 BUTTON
 7
-189
+164
 228
-222
+197
 Setup
 setup
 NIL
@@ -418,9 +413,9 @@ NIL
 
 BUTTON
 231
-189
+164
 429
-222
+197
 Go
 go
 T
@@ -435,11 +430,26 @@ NIL
 
 SLIDER
 9
-64
+39
 428
-97
+72
 ratio-policemen
 ratio-policemen
+0.01
+1
+0.03
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+9
+83
+428
+116
+ratio-criminals
+ratio-criminals
 0.01
 1
 0.06
@@ -449,30 +459,15 @@ NIL
 HORIZONTAL
 
 SLIDER
-9
-108
-428
-141
-ratio-criminals
-ratio-criminals
-0.01
-1
-0.1
-0.01
-1
-NIL
-HORIZONTAL
-
-SLIDER
 10
-149
+124
 430
-182
+157
 population-size
 population-size
 500
 2000
-800.0
+1300.0
 50
 1
 NIL
@@ -536,13 +531,35 @@ PENS
 
 TEXTBOX
 113
-23
+11
 354
-45
+33
 Crime Spread Simulation
 18
 0.0
 1
+
+MONITOR
+9
+214
+130
+259
+Crimes commited
+count crimes
+17
+1
+11
+
+MONITOR
+143
+214
+284
+259
+Successful runaways
+count-successful-runaways
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
